@@ -105,6 +105,36 @@
         opts: defaults,_netdev
         fstype: glusterfs
 
+    # - name: pull pihole image
+    #   community.docker.docker_image:
+    #     state: present
+    #     name: pihole/pihole
+    #     source: pull
+
+    - name: deploy file 16-tblake.conf
+      copy:
+        src: 16-tblake.conf
+        dest: /home/tblake/16-tblake.conf
+        owner: tblake
+        group: tblake
+        mode: 0644
+
+    - name: deploy file dhcpLeases.php
+      copy:
+        src: dhcpLeases.php
+        dest: /home/tblake/DdhcpLeases.php
+        owner: tblake
+        group: tblake
+        mode: 0644
+
+    - name: deploy file Dockerfile-pihole
+      copy:
+        src: Dockerfile-keepalived
+        dest: /home/tblake/Dockerfile-keepalived
+        owner: tblake
+        group: tblake
+        mode: 0644
+
     - name: deploy file Dockerfile-keepalived
       copy:
         src: Dockerfile-keepalived
@@ -120,6 +150,15 @@
         owner: tblake
         group: tblake
         mode: 0644
+
+    - name: build pihole image
+      community.docker.docker_image:
+        build:
+          path: /home/tblake
+          dockerfile: Dockerfile-pihole
+        source: build
+        state: present
+        name: pihole
 
     - name: build keepalived image
       community.docker.docker_image:
@@ -143,12 +182,6 @@
       community.docker.docker_image:
         state: absent
         name: alpine
-
-    - name: pull pihole image
-      community.docker.docker_image:
-        state: present
-        name: pihole/pihole
-        source: pull
 
     - name: Create pihole-data volume mount
       file:
@@ -188,6 +221,7 @@
         mode: 0644
 
     - name: deploy file 04-pihole-static-dhcp.conf
+      tags: iplistchange
       copy:
         src: 04-pihole-static-dhcp.conf
         dest: /shared/pihole-dnsmasq/04-pihole-static-dhcp.conf
@@ -197,8 +231,9 @@
       when: ansible_default_ipv4['address'] in groups['piswarm'][0]
 
     - name: deploy file custom.list
+      tags: iplistchange
       copy:
-        src: 04-pihole-static-dhcp.conf
+        src: custom.list
         dest: /shared/pihole-data/custom.list
         owner: root
         group: root

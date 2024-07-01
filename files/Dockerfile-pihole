@@ -1,0 +1,4 @@
+FROM pihole/pihole:latest
+USER root
+ADD 16-tblake.conf /etc/lighttpd/conf-enabled/
+ADD dhcpLeases.php /var/www/html
