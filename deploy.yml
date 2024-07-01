@@ -112,7 +112,6 @@
     #     source: pull
 
     - name: deploy file 16-tblake.conf
-      tags: buildpihole
       copy:
         src: 16-tblake.conf
         dest: /home/tblake/16-tblake.conf
@@ -121,7 +120,6 @@
         mode: 0644
 
     - name: deploy file dhcpLeases.php
-      tags: buildpihole
       copy:
         src: dhcpLeases.php
         dest: /home/tblake/dhcpLeases.php
@@ -130,7 +128,6 @@
         mode: 0644
 
     - name: deploy file Dockerfile-pihole
-      tags: buildpihole
       copy:
         src: Dockerfile-pihole
         dest: /home/tblake/Dockerfile-pihole
@@ -155,7 +152,6 @@
         mode: 0644
 
     - name: build pihole image
-      tags: buildpihole
       community.docker.docker_image:
         build:
           path: /home/tblake
