@@ -244,7 +244,7 @@
       community.docker.docker_swarm_service:
         name: pihole
         hostname: pihole_swarm
-        image: pihole/pihole
+        image: pihole
         mounts:
           - source: /shared/pihole-data
             target: /etc/pihole
