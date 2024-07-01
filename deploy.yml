@@ -219,6 +219,8 @@
             type: bind
         cap_add:
           - NET_ADMIN
+        dns:
+          - "127.0.0.1"
         env:
           TZ: 'America/New_York'
           DNSMASQ_LISTENING: 'all'
