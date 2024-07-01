@@ -1,0 +1,305 @@
+---
+- name: download & install pihole docker swarm 
+  hosts: piswarm
+  remote_user: tblake
+  become: true
+  become_method: sudo
+  vars:
+    relay_dest: 192.168.2.2
+    auth_pass: sdkjfnsiu
+    host_count: "{{ groups['piswarm'] | length }}"
+  tasks:
+
+    - name: Check for host count, end if less than 3
+      meta: end_play
+      when: host_count | int < 3
+
+    - name: get docker keyring
+      get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Gather dpkg architecture
+      command: dpkg --print-architecture
+      register: dpkg_arch
+
+    - name: docker repo file
+      copy:
+        dest: /etc/apt/sources.list.d/docker.list
+        owner: root
+        group: root
+        mode: 0644
+        content: |
+          deb [arch={{ dpkg_arch.stdout }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ansible_distribution_release}} stable
+
+    - name: install all packages
+      package:
+        update_cache: yes
+        state: present
+        name:
+          - glusterfs-server
+          - software-properties-common
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+          - python3-docker
+
+    - name: systemd startup docker
+      systemd_service:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: init docker swarm (first node)
+      community.docker.docker_swarm:
+        state: present
+      when: ansible_default_ipv4['address'] in groups['piswarm'][0]
+      register: swarminit
+
+    - name: join docker swarm nodes (managers, 2nd & 3rd nodes)
+      community.docker.docker_swarm:
+        state: join
+        join_token: "{{ hostvars[groups['piswarm'][0]]['swarminit']['swarm_facts']['JoinTokens']['Manager'] }}"
+        remote_addrs: "{{ groups['piswarm'][0] }}"
+      when: ansible_default_ipv4['address'] in groups['piswarm'][1:3]
+
+    - name: join docker swarm nodes (workers, remaining nodes)
+      community.docker.docker_swarm:
+        state: join
+        join_token: "{{ hostvars[groups['piswarm'][0]]['swarminit']['swarm_facts']['JoinTokens']['Worker'] }}"
+        remote_addrs: "{{ groups['piswarm'][0] }}"
+      when: ansible_default_ipv4['address'] in groups['piswarm'][3:]
+
+    - name: systemd startup glusterd
+      systemd_service:
+        name: glusterd
+        enabled: true
+        state: started
+
+    - name: add gluster peers
+      gluster_peer:
+        state: present
+        nodes: "{{ groups['piswarm'] }}"
+      when: ansible_default_ipv4['address'] in groups['piswarm'][0]
+
+    - name: create gluster volume
+      gluster_volume:
+        state: present
+        name: glfs1
+        replicas: "{{ host_count }}"
+        bricks: /glfs
+        force: true
+        cluster: "{{ groups['piswarm'] }}"
+      when: ansible_default_ipv4['address'] in groups['piswarm'][0]
+
+    - name: mount gluster volume
+      tags: mount_gluster
+      mount:
+        boot: true
+        src: "localhost:/glfs1"
+        path: /shared
+        state: mounted
+        opts: defaults,_netdev
+        fstype: glusterfs
+
+    - name: deploy file Dockerfile-keepalived
+      copy:
+        src: Dockerfile-keepalived
+        dest: /home/tblake/Dockerfile-keepalived
+        owner: tblake
+        group: tblake
+        mode: 0644
+
+    - name: deploy file Dockerfile-dnsmasq
+      copy:
+        src: Dockerfile-dnsmasq
+        dest: /home/tblake/Dockerfile-dnsmasq
+        owner: tblake
+        group: tblake
+        mode: 0644
+
+    - name: build keepalived image
+      community.docker.docker_image:
+        build:
+          path: /home/tblake
+          dockerfile: Dockerfile-keepalived
+        source: build
+        state: present
+        name: keepalived
+
+    - name: build dnsmasq image
+      community.docker.docker_image:
+        build:
+          path: /home/tblake
+          dockerfile: Dockerfile-dnsmasq
+        source: build
+        state: present
+        name: dnsmasq
+
+    - name: remove extraneous alpine image
+      community.docker.docker_image:
+        state: absent
+        name: alpine
+
+    - name: pull pihole image
+      community.docker.docker_image:
+        state: present
+        name: pihole/pihole
+        source: pull
+
+    - name: Create pihole-data volume mount
+      file:
+        path: /shared/pihole-data
+        state: directory
+      when: ansible_default_ipv4['address'] in groups['piswarm'][0]
+
+    - name: Create pihole-dnsmasq volume mount
+      file:
+        path: /shared/pihole-dnsmasq
+        state: directory
+      when: ansible_default_ipv4['address'] in groups['piswarm'][0]
+
+    - name: deploy template 02-pihole-dhcp-custom.conf
+      template:
+        src: templates/02-pihole-dhcp-custom.conf.j2
+        dest: /shared/pihole-dnsmasq/02-pihole-dhcp-custom.conf
+        owner: root
+        group: root
+        mode: 0644
+      when: ansible_default_ipv4['address'] in groups['piswarm'][0]
+
+    - name: deploy template dnsmasq.conf
+      template:
+        src: dnsmasq.conf.j2
+        dest: /home/tblake/dnsmasq.conf
+        owner: tblake
+        group: tblake
+        mode: 0644
+
+    - name: deploy template keepalived.conf
+      template:
+        src: keepalived.conf.j2
+        dest: /home/tblake/keepalived.conf
+        owner: tblake
+        group: tblake
+        mode: 0644
+
+    - name: deploy file 04-pihole-static-dhcp.conf
+      copy:
+        src: 04-pihole-static-dhcp.conf
+        dest: /shared/pihole-dnsmasq/04-pihole-static-dhcp.conf
+        owner: root
+        group: root
+        mode: 0644
+      when: ansible_default_ipv4['address'] in groups['piswarm'][0]
+
+    - name: deploy file custom.list
+      copy:
+        src: 04-pihole-static-dhcp.conf
+        dest: /shared/pihole-data/custom.list
+        owner: root
+        group: root
+        mode: 0644
+      when: ansible_default_ipv4['address'] in groups['piswarm'][0]
+
+    - name: deploy / start pihole swarm service
+      community.docker.docker_swarm_service:
+        name: pihole
+        hostname: pihole_swarm
+        image: pihole/pihole
+        mounts:
+          - source: /shared/pihole-data
+            target: /etc/pihole
+            type: bind
+          - source: /shared/pihole-dnsmasq
+            target: /etc/dnsmasq.d
+            type: bind
+        cap_add:
+          - NET_ADMIN
+        env:
+          TZ: 'America/New_York'
+          DNSMASQ_LISTENING: 'all'
+          PIHOLE_DNS_: "192.168.2.1"
+          DNS_BOGUS_PRIV: "true"
+          DNS_FQDN_REQUIRED: "true"
+          DHCP_ACTIVE: "true"
+          DHCP_START: "192.168.2.201"
+          DHCP_END: "192.168.2.251"
+          DHCP_ROUTER: "192.168.2.1"
+          DHCP_LEASETIME: "1"
+          PIHOLE_DOMAIN: "tblake.org"
+          TEMPERATUREUNIT: "f"
+          QUERY_LOGGING: "false"
+          WEBTHEME: "default-darker"
+          FTLCONF_BLOCKINGMODE: "NULL"
+          FTLCONF_RATE_LIMIT: "1000/60"
+          FTLCONF_PRIVACYLEVEL: "0"
+        publish:
+          - published_port: 53
+            target_port: 53
+            protocol: "udp"
+            mode: "host"
+          - published_port: 53
+            target_port: 53
+            protocol: "tcp"
+            mode: "host"
+          - published_port: 66
+            target_port: 67
+            protocol: "udp"
+            mode: "host"
+          - published_port: 80
+            target_port: 80
+            protocol: "tcp"
+            mode: "ingress"
+        replicas: 1
+      when: ansible_default_ipv4['address'] in groups['piswarm'][0]
+
+    - name: start keepalived container
+      community.docker.docker_container:
+        name: keepalived
+        image: keepalived
+        volumes: ./keepalived.conf:/etc/keepalived.conf
+        hostname: keepalived
+        capabilities:
+          - NET_ADMIN
+        network_mode: host
+        restart_policy: unless-stopped
+        state: started
+        pid_mode: "host"
+
+    - name: start dnsmasq container
+      community.docker.docker_container:
+        name: dnsmasq
+        image: dnsmasq
+        volumes: ./dnsmasq.conf:/etc/dnsmasq.conf
+        hostname: dnsmasq
+        capabilities:
+          - NET_ADMIN
+          - NET_BROADCAST
+          - NET_RAW
+        network_mode: host
+        restart_policy: unless-stopped
+        state: started
+
+    - name: deploy file proc_leds.sh
+      copy:
+        src: proc_leds.sh
+        dest: /home/tblake/proc_leds.sh
+        owner: tblake
+        group: tblake
+        mode: 0755
+
+    - name: cron entry (proc_leds)
+      cron:
+         name: proc_leds
+         cron_file: "proc_leds"
+         user: "root"
+         minute: "*"
+         hour: "*"
+         dom: "*"
+         month: "*"
+         dow: "*"
+         job: "/home/tblake/proc_leds.sh pihole-FTL"

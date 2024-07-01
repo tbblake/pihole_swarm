@@ -1,0 +1,8 @@
+FROM alpine:latest
+
+MAINTAINER tbblake@gmail.com
+
+USER root
+RUN apk add dnsmasq
+EXPOSE 67/udp
+CMD ["/usr/sbin/dnsmasq","-k"]

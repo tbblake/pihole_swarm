@@ -1,0 +1,32 @@
+global_defs {
+    router_id PIHOLE
+    vrrp_skip_check_adv_addr
+    vrrp_garp_interval 1
+    vrrp_gna_interval 1
+    enable_script_security
+}
+
+vrrp_script track_pihole {
+    script "/bin/busybox pgrep pihole-FTL"
+    interval 2
+    weight 2
+    user root
+}
+
+vrrp_instance VI_1 {
+    state MASTER
+    interface {{ansible_default_ipv4.alias}}
+    virtual_router_id 100
+    priority 100
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass {{auth_pass}}
+    }
+    virtual_ipaddress {
+        {{relay_dest}}/24
+    }
+    track_script {
+        track_pihole
+    }
+}

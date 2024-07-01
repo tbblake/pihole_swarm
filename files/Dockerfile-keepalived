@@ -1,0 +1,7 @@
+FROM alpine:latest
+
+MAINTAINER tbblake@gmail.com
+
+USER root
+RUN apk add keepalived
+CMD ["/usr/sbin/keepalived","-f","/etc/keepalived.conf","-l","-n","-D"]
