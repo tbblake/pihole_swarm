@@ -1,6 +1,4 @@
 custom.list
 custom.list.mine
 04-pihole-static-dhcp.conf
-gen_custom_list.sh
-remove_all.sh
-restartdns.sh
+mine
