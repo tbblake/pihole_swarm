@@ -129,8 +129,8 @@
 
     - name: deploy file Dockerfile-pihole
       copy:
-        src: Dockerfile-keepalived
-        dest: /home/tblake/Dockerfile-keepalived
+        src: Dockerfile-pihole
+        dest: /home/tblake/Dockerfile-pihole
         owner: tblake
         group: tblake
         mode: 0644
