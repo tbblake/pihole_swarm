@@ -105,10 +105,10 @@
         opts: defaults,_netdev
         fstype: glusterfs
 
-    - name: deploy file 16-tblake.conf
+    - name: deploy file 16-dhcpLeases.conf
       copy:
-        src: 16-tblake.conf
-        dest: /home/tblake/16-tblake.conf
+        src: 16-dhcpLeases.conf
+        dest: /home/tblake/16-dhcpLeases.conf
         owner: tblake
         group: tblake
         mode: 0644
