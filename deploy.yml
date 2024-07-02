@@ -105,12 +105,6 @@
         opts: defaults,_netdev
         fstype: glusterfs
 
-    # - name: pull pihole image
-    #   community.docker.docker_image:
-    #     state: present
-    #     name: pihole/pihole
-    #     source: pull
-
     - name: deploy file 16-tblake.conf
       copy:
         src: 16-tblake.conf
