@@ -15,10 +15,6 @@
 //	3 - output csv table
 //	4 - the raw dhcp.leases file
 // noDate - supresses date in output
-//
-// htmlTable - output html table (deprecated)
-// textTable - output text table (deprecated)
-// jsonTable - output json table (deprecated)
 
 $leaseFile="/etc/pihole/dhcp.leases";
 
@@ -28,23 +24,6 @@ if(!is_readable($leaseFile)) {
 }
 
 $noDate=array_key_exists("noDate",$_GET);
-
-// older format code, deprecated
-// options, use fmt instead
-$htmlTable=array_key_exists("htmlTable",$_GET);
-$textTable=array_key_exists("textTable",$_GET);
-$jsonTable=array_key_exists("jsonTable",$_GET);
-
-if($htmlTable || $textTable || $jsonTable) {
-	if($htmlTable) {
-		$fmt=0;
-	} else if ($textTable) {
-		$fmt=1;
-	} else if ($jsonTable) {
-		$fmt=2;
-	}
-}
-// end deprecated code
 
 if(array_key_exists("fmt",$_GET)) {
 	$fmtParam=$_GET["fmt"];
