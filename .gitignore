@@ -1,4 +1,4 @@
-custom.list
-custom.list.mine
+custom.list*
 04-pihole-static-dhcp.conf
+05-pihole-custom-cname.conf
 mine

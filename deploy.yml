@@ -224,6 +224,16 @@
         mode: 0644
       when: ansible_default_ipv4['address'] in groups['piswarm'][0]
 
+    - name: deploy file 05-pihole-custom-cname.conf
+      tags: iplistchange
+      copy:
+        src: 05-pihole-custom-cname.conf
+        dest: /shared/pihole-dnsmasq/05-pihole-custom-cname.conf
+        owner: root
+        group: root
+        mode: 0644
+      when: ansible_default_ipv4['address'] in groups['piswarm'][0]
+
     - name: deploy file custom.list
       tags: iplistchange
       copy:
