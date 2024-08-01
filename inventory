@@ -1,5 +1,6 @@
 [piswarm]
-192.168.2.101
-192.168.2.102
-192.168.2.103
-192.168.2.104
+192.168.2.101 ansible_user=tblake ansible_become=true
+192.168.2.102 ansible_user=tblake ansible_become=true
+192.168.2.103 ansible_user=tblake ansible_become=true
+192.168.2.104 ansible_user=tblake ansible_become=true
+

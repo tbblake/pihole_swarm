@@ -5,7 +5,7 @@
   become: true
   become_method: sudo
   vars:
-    relay_dest: 192.168.2.2
+    relay_dest: 192.168.2.7
     auth_pass: sdkjfnsiu
     host_count: "{{ groups['piswarm'] | length }}"
   tasks:
@@ -38,6 +38,7 @@
         update_cache: yes
         state: present
         name:
+          - cron
           - glusterfs-server
           - software-properties-common
           - docker-ce
@@ -266,7 +267,7 @@
           PIHOLE_DNS_: "192.168.2.1"
           DNS_BOGUS_PRIV: "true"
           DNS_FQDN_REQUIRED: "true"
-          DHCP_ACTIVE: "true"
+          DHCP_ACTIVE: "false"
           DHCP_START: "192.168.2.201"
           DHCP_END: "192.168.2.251"
           DHCP_ROUTER: "192.168.2.1"
